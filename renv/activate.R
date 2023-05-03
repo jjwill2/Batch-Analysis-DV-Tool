@@ -7,45 +7,13 @@ local({
   # the project directory
   project <- getwd()
 
-  # figure out whether the autoloader is enabled
-  enabled <- local({
-
-    # first, check config option
-    override <- getOption("renv.config.autoloader.enabled")
-    if (!is.null(override))
-      return(override)
-
-    # next, check environment variables
-    # TODO: prefer using the configuration one in the future
-    envvars <- c(
-      "RENV_CONFIG_AUTOLOADER_ENABLED",
-      "RENV_AUTOLOADER_ENABLED",
-      "RENV_ACTIVATE_PROJECT"
-    )
-
-    for (envvar in envvars) {
-      envval <- Sys.getenv(envvar, unset = NA)
-      if (!is.na(envval))
-        return(tolower(envval) %in% c("true", "t", "1"))
-    }
-
-    # enable by default
-    TRUE
-
-  })
-
-  if (!enabled)
-    return(FALSE)
-
   # avoid recursion
-  if (identical(getOption("renv.autoloader.running"), TRUE)) {
-    warning("ignoring recursive attempt to run renv autoloader")
+  if (!is.na(Sys.getenv("RENV_R_INITIALIZING", unset = NA)))
     return(invisible(TRUE))
-  }
 
   # signal that we're loading renv during R startup
-  options(renv.autoloader.running = TRUE)
-  on.exit(options(renv.autoloader.running = NULL), add = TRUE)
+  Sys.setenv("RENV_R_INITIALIZING" = "true")
+  on.exit(Sys.unsetenv("RENV_R_INITIALIZING"), add = TRUE)
 
   # signal that we've consented to use renv
   options(renv.consent = TRUE)
@@ -54,15 +22,26 @@ local({
   # mask 'utils' packages, will come first on the search path
   library(utils, lib.loc = .Library)
 
+<<<<<<< HEAD
   # unload renv if it's already been loaded
   if ("renv" %in% loadedNamespaces())
+=======
+  # check to see if renv has already been loaded
+  if ("renv" %in% loadedNamespaces()) {
+
+    # if renv has already been loaded, and it's the requested version of renv,
+    # nothing to do
+    spec <- .getNamespaceInfo(.getNamespace("renv"), "spec")
+    if (identical(spec[["version"]], version))
+      return(invisible(TRUE))
+
+    # otherwise, unload and attempt to load the correct version of renv
+>>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
     unloadNamespace("renv")
 
-  # load bootstrap tools   
-  `%||%` <- function(x, y) {
-    if (is.environment(x) || length(x)) x else y
   }
-  
+
+  # load bootstrap tools   
   bootstrap <- function(version, library) {
   
     # attempt to download renv
@@ -88,11 +67,6 @@ local({
     if (!is.na(repos))
       return(repos)
   
-    # check for lockfile repositories
-    repos <- tryCatch(renv_bootstrap_repos_lockfile(), error = identity)
-    if (!inherits(repos, "error") && length(repos))
-      return(repos)
-  
     # if we're testing, re-use the test repositories
     if (renv_bootstrap_tests_running())
       return(getOption("renv.tests.repos"))
@@ -101,43 +75,16 @@ local({
     repos <- getOption("repos")
   
     # ensure @CRAN@ entries are resolved
-    repos[repos == "@CRAN@"] <- getOption(
-      "renv.repos.cran",
-      "https://cloud.r-project.org"
-    )
+    repos[repos == "@CRAN@"] <- "https://cloud.r-project.org"
   
     # add in renv.bootstrap.repos if set
-    default <- c(FALLBACK = "https://cloud.r-project.org")
+    default <- c(CRAN = "https://cloud.r-project.org")
     extra <- getOption("renv.bootstrap.repos", default = default)
     repos <- c(repos, extra)
   
     # remove duplicates that might've snuck in
     dupes <- duplicated(repos) | duplicated(names(repos))
     repos[!dupes]
-  
-  }
-  
-  renv_bootstrap_repos_lockfile <- function() {
-  
-    lockpath <- Sys.getenv("RENV_PATHS_LOCKFILE", unset = "renv.lock")
-    if (!file.exists(lockpath))
-      return(NULL)
-  
-    lockfile <- tryCatch(renv_json_read(lockpath), error = identity)
-    if (inherits(lockfile, "error")) {
-      warning(lockfile)
-      return(NULL)
-    }
-  
-    repos <- lockfile$R$Repositories
-    if (length(repos) == 0)
-      return(NULL)
-  
-    keys <- vapply(repos, `[[`, "Name", FUN.VALUE = character(1))
-    vals <- vapply(repos, `[[`, "URL", FUN.VALUE = character(1))
-    names(vals) <- keys
-  
-    return(vals)
   
   }
   
@@ -148,20 +95,16 @@ local({
     nv <- numeric_version(version)
     components <- unclass(nv)[[1]]
   
-    # if this appears to be a development version of 'renv', we'll
-    # try to restore from github
-    dev <- length(components) == 4L
-  
-    # begin collecting different methods for finding renv
-    methods <- c(
-      renv_bootstrap_download_tarball,
-      if (dev)
+    methods <- if (length(components) == 4L) {
+      list(
         renv_bootstrap_download_github
-      else c(
+      )
+    } else {
+      list(
         renv_bootstrap_download_cran_latest,
         renv_bootstrap_download_cran_archive
       )
-    )
+    }
   
     for (method in methods) {
       path <- tryCatch(method(version), error = identity)
@@ -229,6 +172,7 @@ local({
   
   renv_bootstrap_download_cran_latest <- function(version) {
   
+<<<<<<< HEAD
     spec <- renv_bootstrap_download_cran_latest_find(version)
     type  <- spec$type
     repos <- spec$repos
@@ -248,6 +192,19 @@ local({
     destfile <- file.path(tempdir(), name)
     status <- tryCatch(
       renv_bootstrap_download_impl(url, destfile),
+=======
+    repos <- renv_bootstrap_download_cran_latest_find(version)
+  
+    message("* Downloading renv ", version, " from CRAN ... ", appendLF = FALSE)
+  
+    info <- tryCatch(
+      utils::download.packages(
+        pkgs = "renv",
+        repos = repos,
+        destdir = tempdir(),
+        quiet = TRUE
+      ),
+>>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
       condition = identity
     )
   
@@ -256,52 +213,42 @@ local({
       return(FALSE)
     }
   
+<<<<<<< HEAD
     # report success and return
     message("OK (downloaded ", type, ")")
     destfile
+=======
+    message("OK")
+    info[1, 2]
+>>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
   
   }
   
   renv_bootstrap_download_cran_latest_find <- function(version) {
   
-    # check whether binaries are supported on this system
-    binary <-
-      getOption("renv.bootstrap.binary", default = TRUE) &&
-      !identical(.Platform$pkgType, "source") &&
-      !identical(getOption("pkgType"), "source") &&
-      Sys.info()[["sysname"]] %in% c("Darwin", "Windows")
+    all <- renv_bootstrap_repos()
   
-    types <- c(if (binary) "binary", "source")
+    for (repos in all) {
   
-    # iterate over types + repositories
-    for (type in types) {
-      for (repos in renv_bootstrap_repos()) {
+      db <- tryCatch(
+        as.data.frame(
+          x = utils::available.packages(repos = repos),
+          stringsAsFactors = FALSE
+        ),
+        error = identity
+      )
   
-        # retrieve package database
-        db <- tryCatch(
-          as.data.frame(
-            utils::available.packages(type = type, repos = repos),
-            stringsAsFactors = FALSE
-          ),
-          error = identity
-        )
+      if (inherits(db, "error"))
+        next
   
-        if (inherits(db, "error"))
-          next
+      entry <- db[db$Package %in% "renv" & db$Version %in% version, ]
+      if (nrow(entry) == 0)
+        next
   
-        # check for compatible entry
-        entry <- db[db$Package %in% "renv" & db$Version %in% version, ]
-        if (nrow(entry) == 0)
-          next
+      return(repos)
   
-        # found it; return spec to caller
-        spec <- list(entry = entry, type = type, repos = repos)
-        return(spec)
-  
-      }
     }
   
-    # if we got here, we failed to find renv
     fmt <- "renv %s is not available from your declared package repositories"
     stop(sprintf(fmt, version))
   
@@ -314,7 +261,7 @@ local({
     urls <- file.path(repos, "src/contrib/Archive/renv", name)
     destfile <- file.path(tempdir(), name)
   
-    message("* Downloading renv ", version, " ... ", appendLF = FALSE)
+    message("* Downloading renv ", version, " from CRAN archive ... ", appendLF = FALSE)
   
     for (url in urls) {
   
@@ -335,6 +282,7 @@ local({
   
   }
   
+<<<<<<< HEAD
   renv_bootstrap_download_tarball <- function(version) {
   
     # if the user has provided the path to a tarball via
@@ -371,6 +319,8 @@ local({
   
   }
   
+=======
+>>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
   renv_bootstrap_download_github <- function(version) {
   
     enabled <- Sys.getenv("RENV_BOOTSTRAP_FROM_GITHUB", unset = "TRUE")
@@ -424,13 +374,7 @@ local({
     bin <- R.home("bin")
     exe <- if (Sys.info()[["sysname"]] == "Windows") "R.exe" else "R"
     r <- file.path(bin, exe)
-  
-    args <- c(
-      "--vanilla", "CMD", "INSTALL", "--no-multiarch",
-      "-l", shQuote(path.expand(library)),
-      shQuote(path.expand(tarball))
-    )
-  
+    args <- c("--vanilla", "CMD", "INSTALL", "-l", shQuote(library), shQuote(tarball))
     output <- system2(r, args, stdout = TRUE, stderr = TRUE)
     message("Done!")
   
@@ -447,7 +391,7 @@ local({
   
   }
   
-  renv_bootstrap_platform_prefix <- function() {
+  renv_bootstrap_prefix <- function() {
   
     # construct version prefix
     version <- paste(R.version$major, R.version$minor, sep = ".")
@@ -466,145 +410,12 @@ local({
     components <- c(prefix, R.version$platform)
   
     # include prefix if provided by user
-    prefix <- renv_bootstrap_platform_prefix_impl()
-    if (!is.na(prefix) && nzchar(prefix))
+    prefix <- Sys.getenv("RENV_PATHS_PREFIX")
+    if (nzchar(prefix))
       components <- c(prefix, components)
   
     # build prefix
     paste(components, collapse = "/")
-  
-  }
-  
-  renv_bootstrap_platform_prefix_impl <- function() {
-  
-    # if an explicit prefix has been supplied, use it
-    prefix <- Sys.getenv("RENV_PATHS_PREFIX", unset = NA)
-    if (!is.na(prefix))
-      return(prefix)
-  
-    # if the user has requested an automatic prefix, generate it
-    auto <- Sys.getenv("RENV_PATHS_PREFIX_AUTO", unset = NA)
-    if (auto %in% c("TRUE", "True", "true", "1"))
-      return(renv_bootstrap_platform_prefix_auto())
-  
-    # empty string on failure
-    ""
-  
-  }
-  
-  renv_bootstrap_platform_prefix_auto <- function() {
-  
-    prefix <- tryCatch(renv_bootstrap_platform_os(), error = identity)
-    if (inherits(prefix, "error") || prefix %in% "unknown") {
-  
-      msg <- paste(
-        "failed to infer current operating system",
-        "please file a bug report at https://github.com/rstudio/renv/issues",
-        sep = "; "
-      )
-  
-      warning(msg)
-  
-    }
-  
-    prefix
-  
-  }
-  
-  renv_bootstrap_platform_os <- function() {
-  
-    sysinfo <- Sys.info()
-    sysname <- sysinfo[["sysname"]]
-  
-    # handle Windows + macOS up front
-    if (sysname == "Windows")
-      return("windows")
-    else if (sysname == "Darwin")
-      return("macos")
-  
-    # check for os-release files
-    for (file in c("/etc/os-release", "/usr/lib/os-release"))
-      if (file.exists(file))
-        return(renv_bootstrap_platform_os_via_os_release(file, sysinfo))
-  
-    # check for redhat-release files
-    if (file.exists("/etc/redhat-release"))
-      return(renv_bootstrap_platform_os_via_redhat_release())
-  
-    "unknown"
-  
-  }
-  
-  renv_bootstrap_platform_os_via_os_release <- function(file, sysinfo) {
-  
-    # read /etc/os-release
-    release <- utils::read.table(
-      file             = file,
-      sep              = "=",
-      quote            = c("\"", "'"),
-      col.names        = c("Key", "Value"),
-      comment.char     = "#",
-      stringsAsFactors = FALSE
-    )
-  
-    vars <- as.list(release$Value)
-    names(vars) <- release$Key
-  
-    # get os name
-    os <- tolower(sysinfo[["sysname"]])
-  
-    # read id
-    id <- "unknown"
-    for (field in c("ID", "ID_LIKE")) {
-      if (field %in% names(vars) && nzchar(vars[[field]])) {
-        id <- vars[[field]]
-        break
-      }
-    }
-  
-    # read version
-    version <- "unknown"
-    for (field in c("UBUNTU_CODENAME", "VERSION_CODENAME", "VERSION_ID", "BUILD_ID")) {
-      if (field %in% names(vars) && nzchar(vars[[field]])) {
-        version <- vars[[field]]
-        break
-      }
-    }
-  
-    # join together
-    paste(c(os, id, version), collapse = "-")
-  
-  }
-  
-  renv_bootstrap_platform_os_via_redhat_release <- function() {
-  
-    # read /etc/redhat-release
-    contents <- readLines("/etc/redhat-release", warn = FALSE)
-  
-    # infer id
-    id <- if (grepl("centos", contents, ignore.case = TRUE))
-      "centos"
-    else if (grepl("redhat", contents, ignore.case = TRUE))
-      "redhat"
-    else
-      "unknown"
-  
-    # try to find a version component (very hacky)
-    version <- "unknown"
-  
-    parts <- strsplit(contents, "[[:space:]]")[[1L]]
-    for (part in parts) {
-  
-      nv <- tryCatch(numeric_version(part), error = identity)
-      if (inherits(nv, "error"))
-        next
-  
-      version <- nv[1, 1]
-      break
-  
-    }
-  
-    paste(c("linux", id, version), collapse = "-")
   
   }
   
@@ -623,33 +434,17 @@ local({
   
   renv_bootstrap_library_root <- function(project) {
   
-    prefix <- renv_bootstrap_profile_prefix()
-  
     path <- Sys.getenv("RENV_PATHS_LIBRARY", unset = NA)
     if (!is.na(path))
-      return(paste(c(path, prefix), collapse = "/"))
+      return(path)
   
-    path <- renv_bootstrap_library_root_impl(project)
-    if (!is.null(path)) {
+    path <- Sys.getenv("RENV_PATHS_LIBRARY_ROOT", unset = NA)
+    if (!is.na(path)) {
       name <- renv_bootstrap_library_root_name(project)
-      return(paste(c(path, prefix, name), collapse = "/"))
+      return(file.path(path, name))
     }
   
-    renv_bootstrap_paths_renv("library", project = project)
-  
-  }
-  
-  renv_bootstrap_library_root_impl <- function(project) {
-  
-    root <- Sys.getenv("RENV_PATHS_LIBRARY_ROOT", unset = NA)
-    if (!is.na(root))
-      return(root)
-  
-    type <- renv_bootstrap_project_type(project)
-    if (identical(type, "package")) {
-      userdir <- renv_bootstrap_user_dir()
-      return(file.path(userdir, "library"))
-    }
+    file.path(project, "renv/library")
   
   }
   
@@ -706,6 +501,7 @@ local({
     TRUE
   
   }
+<<<<<<< HEAD
   
   renv_bootstrap_profile_load <- function(project) {
   
@@ -950,12 +746,14 @@ local({
 
   # load the renv profile, if any
   renv_bootstrap_profile_load(project)
+=======
+>>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
 
   # construct path to library root
   root <- renv_bootstrap_library_root(project)
 
   # construct library prefix for platform
-  prefix <- renv_bootstrap_platform_prefix()
+  prefix <- renv_bootstrap_prefix()
 
   # construct full libpath
   libpath <- file.path(root, prefix)
