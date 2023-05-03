@@ -14,19 +14,14 @@
       "Version": "7.3-54",
       "Source": "Repository",
       "Repository": "CRAN",
-<<<<<<< HEAD
       "Hash": "0e59129db205112e3963904db67fd0dc",
       "Requirements": []
-=======
-      "Hash": "0e59129db205112e3963904db67fd0dc"
->>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
     },
     "Matrix": {
       "Package": "Matrix",
       "Version": "1.3-4",
       "Source": "Repository",
       "Repository": "CRAN",
-<<<<<<< HEAD
       "Hash": "4ed05e9c9726267e4a5872e09c04587c",
       "Requirements": [
         "lattice"
@@ -263,23 +258,12 @@
       "Repository": "CRAN",
       "Hash": "41287f1ac7d28a92f0a286ed507928d3",
       "Requirements": []
-=======
-      "Hash": "4ed05e9c9726267e4a5872e09c04587c"
-    },
-    "lattice": {
-      "Package": "lattice",
-      "Version": "0.21-8",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "0b8a6d63c8770f02a8b5635f3c431e6b"
->>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
     },
     "mgcv": {
       "Package": "mgcv",
       "Version": "1.8-38",
       "Source": "Repository",
       "Repository": "CRAN",
-<<<<<<< HEAD
       "Hash": "be3c61ffbb1e3d3b3df214d192ac5444",
       "Requirements": [
         "Matrix",
@@ -295,16 +279,12 @@
       "Requirements": [
         "colorspace"
       ]
-=======
-      "Hash": "be3c61ffbb1e3d3b3df214d192ac5444"
->>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
     },
     "nlme": {
       "Package": "nlme",
       "Version": "3.1-153",
       "Source": "Repository",
       "Repository": "CRAN",
-<<<<<<< HEAD
       "Hash": "2d632e0d963a653a0329756ce701ecdd",
       "Requirements": [
         "lattice"
@@ -387,16 +367,12 @@
       "Repository": "CRAN",
       "Hash": "c66b930d20bb6d858cd18e1cebcfae5c",
       "Requirements": []
-=======
-      "Hash": "2d632e0d963a653a0329756ce701ecdd"
->>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
     },
     "renv": {
       "Package": "renv",
       "Version": "0.16.0",
       "Source": "Repository",
       "Repository": "CRAN",
-<<<<<<< HEAD
       "Hash": "c9e8442ab69bc21c9697ecf856c1e6c7",
       "Requirements": []
     },
@@ -528,9 +504,6 @@
       "Requirements": [
         "lattice"
       ]
-=======
-      "Hash": "5c0cdb37f063c58cdab3c7e9fbb8bd2c"
->>>>>>> 2cf9fb8bd8369a98f8caf8ce3bfdda7329bc957e
     }
   }
 }
